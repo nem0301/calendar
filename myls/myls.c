@@ -192,6 +192,9 @@ void lsDir(const char* dirName, const char* preDir, int allSet, int inodeSet, in
 
     if (recurSet){
         for(i = 0; i < n; i++){
+            if ( myfile[i]->d_name[0] == '.' && !allSet){
+                continue;
+            }
             stat(myfile[i]->d_name, &mystat);
             mode = mystat.st_mode;
             if (getKind(mode) == 'd' && !( strcmp(".", myfile[i]->d_name) == 0 || strcmp("..", myfile[i]->d_name) == 0)){
