@@ -73,6 +73,9 @@ void lsDir(const char* dirName, const char* preDir, int allSet, int inodeSet, in
     char dirBuf[100];
     char cwd[100];
     char previousDir[100];
+    char tempBuf[100];
+
+    int newlineCount = 0;
 
     getcwd(cwd, sizeof(cwd));
     chdir(dirName);
@@ -85,8 +88,11 @@ void lsDir(const char* dirName, const char* preDir, int allSet, int inodeSet, in
 
 
 
-    //padding
+    //for padding
     for(i = 0; i < n; i++){
+        if ( myfile[i]->d_name[0] == '.' && !allSet){
+            continue;
+        }
         stat(myfile[i]->d_name, &mystat);
 
         sprintf(lengBuf, "%d", (int)mystat.st_ino);
@@ -118,6 +124,9 @@ void lsDir(const char* dirName, const char* preDir, int allSet, int inodeSet, in
         
     if (listSet){   
         for(i = 0; i < n; i++){
+            if ( myfile[i]->d_name[0] == '.' && !allSet){
+                continue;
+            }
             //stat
             stat(myfile[i]->d_name, &mystat);
 
@@ -160,8 +169,23 @@ void lsDir(const char* dirName, const char* preDir, int allSet, int inodeSet, in
         }
     } else {
         for(i = 0; i < n; i++){
+            if ( myfile[i]->d_name[0] == '.' && !allSet){
+                continue;
+            }
             stat(myfile[i]->d_name, &mystat);
-            printf("%*s ", filenameLen, myfile[i]->d_name);
+            if (inodeSet){
+                printf("%*d %-*s ", inodeLen, (int)mystat.st_ino, filenameLen, myfile[i]->d_name);
+                sprintf(tempBuf, "%d", (int)mystat.st_ino);
+                newlineCount += (inodeLen + filenameLen);
+            } else {
+                printf("%-*s ", filenameLen, myfile[i]->d_name);
+                newlineCount += filenameLen;
+            }
+
+            if ( newlineCount > 80){
+                printf("\n");
+                newlineCount = 0;
+            }
         }
         printf("\n");
     }
