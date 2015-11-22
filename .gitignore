@@ -1,9 +1,13 @@
 a.out
-
 *.swp
+*.o
 
 myls/test
 myls/test2
 myls/.test
+
+project/server
+project/client
+
 
 
