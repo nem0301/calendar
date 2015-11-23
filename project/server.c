@@ -98,11 +98,16 @@ void send_msg(char * msg, int len, int clnt_sock)   // send to all
 {
 	int i;
 	pthread_mutex_lock(&mutx);
-    //send a massage to all user not for sender
-	for(i=0; i<clnt_cnt; i++){
-        if (clnt_sock == clnt_socks[i])
-            continue;            
-		write(clnt_socks[i], msg, len);
+    if (msg[0] = '/'){  //if first charater in the string is '/', then it is command string 
+       
+    } else {    //common conversation
+        //send a massage to all user not for sender
+        //if message have '/emotion' string, then it have to be changed to something
+        for(i=0; i<clnt_cnt; i++){
+            if (clnt_sock == clnt_socks[i])
+                continue;            
+            write(clnt_socks[i], msg, len);
+        }
     }
 	pthread_mutex_unlock(&mutx);
 }
