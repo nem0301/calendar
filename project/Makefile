@@ -1,13 +1,9 @@
-server: server.o
-	gcc -o server server.o -l pthread
+CC=gcc
 
-client: client.o
-	gcc -o client client.o -l pthread
+all: server client
 
+server: server.c
+	$(CC) -o $@ $^ -l pthread
 
-server.o: server.c
-	gcc -c server.c
-
-
-client.o: client.c
-	gcc -c client.c
+client: client.c
+	$(CC) -o $@ $^ -l pthread

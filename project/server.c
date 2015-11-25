@@ -6,17 +6,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <fcntl.h>
 
-#define BUF_SIZE 100
+#define BUF_SIZE 257
 #define MAX_CLNT 256
 
 void * handle_clnt(void * arg);
 void send_msg(char * msg, int len, int clnt_sock);
 void error_handling(char * msg);
+void execution(int clnt_sock);
 
 int clnt_cnt=0;
 int clnt_socks[MAX_CLNT];
 pthread_mutex_t mutx;
+
+char* args_g[10];
 
 int main(int argc, char *argv[])
 {
@@ -67,15 +71,18 @@ int main(int argc, char *argv[])
 	return 0;
 }
 	
-void * handle_clnt(void * arg)
+void* handle_clnt(void* arg)
 {
-	int clnt_sock=*((int*)arg);
+    int clnt_sock = *(int*)arg;
 	int str_len=0, i;
 	char msg[BUF_SIZE];
 	
     //waiting client message
-	while((str_len=read(clnt_sock, msg, sizeof(msg)))!=0)
+	while((str_len=read(clnt_sock, msg, sizeof(msg)))!=0){
 		send_msg(msg, str_len, clnt_sock);
+    }
+
+    printf("--------------------------\n");
 
 
 	//if client is disconnected, then remove client
@@ -96,19 +103,59 @@ void * handle_clnt(void * arg)
 }
 void send_msg(char * msg, int len, int clnt_sock)   // send to all
 {
-	int i;
+	int i, j, k;
+    
+    char* ptr[0];
+    char* token;
+    char buf[100];
+    pthread_t tid;
+
+    strcpy(buf, msg);
+    buf[len-1] = '\0';
+    //printf("send_msg : %s\n", buf);
+    
 	pthread_mutex_lock(&mutx);
-    if (msg[0] = '/'){  //if first charater in the string is '/', then it is command string 
-       
-    } else {    //common conversation
+    token = strtok_r(buf, " ", &ptr[0]);
+    token = strtok_r(NULL, " ", &ptr[0]);
+    //if first charater in the string is '/', then it is command string
+    if(strcmp("/exec", token) == 0){
+        i = 0;
+        token = strtok_r(NULL, " ", &ptr[0]);
+        while(token){                
+            args_g[i] = (char*) malloc (strlen(token));           
+            strcpy(args_g[i], token);
+            token = strtok_r(NULL, " ", &ptr[0]);
+            i++;
+        }
+
+        for(k = i; k < 10; k++)
+            args_g[k] = (char*)NULL;        
+
+        execution(clnt_sock);
+        
+        for(k = 0; k < i; k++){
+            free(args_g[k]);
+        }
+    } else {
+
+        //common conversation
         //send a massage to all user not for sender
         //if message have '/emotion' string, then it have to be changed to something
-        for(i=0; i<clnt_cnt; i++){
+
+
+        for(i=0; i<clnt_cnt; i++){            
             if (clnt_sock == clnt_socks[i])
                 continue;            
+            //printf("\"%s\"\n", msg);
+            //for(k = 0; k <= strlen(msg); k++){
+            //    printf("%d ", (int)msg[k]);
+            //}
+            //putchar('\n');
             write(clnt_socks[i], msg, len);
         }
     }
+
+
 	pthread_mutex_unlock(&mutx);
 }
 void error_handling(char * msg)
@@ -117,3 +164,46 @@ void error_handling(char * msg)
 	fputc('\n', stderr);
 	exit(1);
 }
+
+void execution(int clnt_sock){
+    pid_t pid;
+    int n, i;
+    char msg[257];
+    int pd;
+    int status;
+
+    pd = open("FIFOFILE", O_RDWR);
+    
+    switch (pid = fork()){    
+        case -1:
+            perror("fork");
+            exit(1);
+        case 0:
+            close(1);
+            dup(pd);
+            close(2);
+            dup(pd);
+            execvp(args_g[0], args_g);
+            break;
+        default:
+            
+            //for (i = 0; i < 10; i++)
+            //    printf("%s ", args_g[i]);
+            //putchar('\n');
+            
+
+            while( waitpid(pid, &status, WNOHANG) == pid);
+            while( (n = read(pd, msg, 256)) == 256 ){
+                msg[n] = '\0';
+                write(clnt_sock, msg, strlen(msg));            
+                write(1, msg, strlen(msg));
+            }            
+            msg[n] = '\0';
+            write(1, msg, strlen(msg));
+            write(clnt_sock, msg, strlen(msg));
+            break;
+    }
+}
+
+
+

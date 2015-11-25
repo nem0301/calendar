@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 	
-#define BUF_SIZE 100
+#define BUF_SIZE 257
 #define NAME_SIZE 20
 	
 void * send_msg(void * arg);
@@ -61,6 +61,7 @@ void * send_msg(void * arg)   // send thread main
 			close(sock);
 			exit(0);
 		}
+        
         //send name and massage
 		sprintf(name_msg,"%s %s", name, msg);
 		write(sock, name_msg, strlen(name_msg));
@@ -80,7 +81,7 @@ void * recv_msg(void * arg)   // read thread main
 		str_len=read(sock, name_msg, NAME_SIZE+BUF_SIZE-1);
 		if(str_len==-1) 
 			return (void*)-1;
-		name_msg[str_len]=0;
+        name_msg[str_len]=0;
 		fputs(name_msg, stdout);
 	}
 	return NULL;
