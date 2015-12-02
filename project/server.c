@@ -19,6 +19,7 @@ void execution(int clnt_sock);
 int clnt_cnt=0;
 int clnt_socks[MAX_CLNT];
 pthread_mutex_t mutx;
+pthread_mutex_t mutx_for_arg;
 
 char* args_g[10];
 
@@ -114,13 +115,13 @@ void send_msg(char * msg, int len, int clnt_sock)   // send to all
     buf[len-1] = '\0';
     //printf("send_msg : %s\n", buf);
     
-	pthread_mutex_lock(&mutx);
     token = strtok_r(buf, " ", &ptr[0]);
     token = strtok_r(NULL, " ", &ptr[0]);
     //if first charater in the string is '/', then it is command string
     if(strcmp("/exec", token) == 0){
         i = 0;
         token = strtok_r(NULL, " ", &ptr[0]);
+	    pthread_mutex_lock(&mutx_for_arg);
         while(token){                
             args_g[i] = (char*) malloc (strlen(token));           
             strcpy(args_g[i], token);
@@ -136,27 +137,22 @@ void send_msg(char * msg, int len, int clnt_sock)   // send to all
         for(k = 0; k < i; k++){
             free(args_g[k]);
         }
+	    pthread_mutex_unlock(&mutx_for_arg);
     } else {
 
         //common conversation
         //send a massage to all user not for sender
         //if message have '/emotion' string, then it have to be changed to something
-
-
+	    pthread_mutex_lock(&mutx);
         for(i=0; i<clnt_cnt; i++){            
             if (clnt_sock == clnt_socks[i])
                 continue;            
-            //printf("\"%s\"\n", msg);
-            //for(k = 0; k <= strlen(msg); k++){
-            //    printf("%d ", (int)msg[k]);
-            //}
-            //putchar('\n');
             write(clnt_socks[i], msg, len);
         }
+	    pthread_mutex_unlock(&mutx);
     }
 
 
-	pthread_mutex_unlock(&mutx);
 }
 void error_handling(char * msg)
 {
@@ -170,9 +166,12 @@ void execution(int clnt_sock){
     int n, i;
     char msg[257];
     int pd;
+    int fd[2];
     int status;
+    int flags;
+    int count = 0;
 
-    pd = open("FIFOFILE", O_RDWR);
+    pipe(fd);    
     
     switch (pid = fork()){    
         case -1:
@@ -180,27 +179,40 @@ void execution(int clnt_sock){
             exit(1);
         case 0:
             close(1);
-            dup(pd);
+            dup(fd[1]);
             close(2);
-            dup(pd);
+            dup(fd[1]);
             execvp(args_g[0], args_g);
             break;
-        default:
-            
-            //for (i = 0; i < 10; i++)
-            //    printf("%s ", args_g[i]);
-            //putchar('\n');
-            
+        default:            
+            flags = fcntl (pd, F_GETFL, 0);
+            fcntl(fd[0], F_SETFL, flags | O_NONBLOCK);
 
-            while( waitpid(pid, &status, WNOHANG) == pid);
-            while( (n = read(pd, msg, 256)) == 256 ){
-                msg[n] = '\0';
-                write(clnt_sock, msg, strlen(msg));            
-                write(1, msg, strlen(msg));
-            }            
-            msg[n] = '\0';
-            write(1, msg, strlen(msg));
-            write(clnt_sock, msg, strlen(msg));
+            //while( waitpid(pid, &status, WNOHANG) == pid);
+            //while( (n = read(fd[0], msg, 256))  > 0){
+            while(1){
+                count++;
+                n = read(fd[0], msg, 256);
+                if ( n < 0){
+                    usleep(100);
+                    if ( count > 100){
+                        break;
+                    }
+                    else
+                        continue;
+                } else {
+                    msg[n] = '\0';
+                    write(clnt_sock, msg, strlen(msg));            
+                    write(1, msg, strlen(msg));
+                }               
+                if ( n < 256){
+                    break;
+                } 
+            } 
+        
+            //msg[n] = '\0';
+            //write(1, msg, strlen(msg));
+            //write(clnt_sock, msg, strlen(msg));
             break;
     }
 }
