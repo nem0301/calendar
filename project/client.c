@@ -9,20 +9,22 @@
 #define BUF_SIZE 257
 #define NAME_SIZE 20
 
+#define PORT 8797 //SJNAM DEFINE
+
 void * send_msg(void * arg);
 void * recv_msg(void * arg);
 void error_handling(char * msg);
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
-
+char file_send_name[BUF_SIZE];
 int main(int argc, char *argv[]) {
   int sock;
   struct sockaddr_in serv_addr;
   pthread_t snd_thread, rcv_thread;
   void * thread_return;
 
-  if (argc != 4) {
+   if (argc != 4) {
     printf("Usage : %s <IP> <port> <name>\n", argv[0]);
     exit(1);
   }
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
   serv_addr.sin_port = htons(atoi(argv[2]));
+//    serv_addr.sin_port = htons(PORT);
 
   if (connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) == -1)
     error_handling("connect() error");
@@ -79,7 +82,14 @@ void * send_msg(void * arg)   // send thread main
       fclose(fp);
       continue;
     }
+      
+    else if (strcmp(token, "/fileDown") == 0){
+        token = strtok_r(NULL, " ",   &ptr);
 
+        token[strlen(token)-1] = '\0';
+        printf("%s", token);
+        strcpy(file_send_name, token);
+    }
     //when input q or Q, then quit
     if (!strcmp(msg, "q\n") || !strcmp(msg, "Q\n")) {
       close(sock);
@@ -98,12 +108,43 @@ void * recv_msg(void * arg)   // read thread main
   int sock = *((int*) arg);
   char name_msg[NAME_SIZE + BUF_SIZE];
   int str_len;
+  char file_msg[BUF_SIZE] = {0,};  //file buffer
 
   //whenever client recieves a message from server, print to stdout
   while (1) {
-    str_len = read(sock, name_msg, NAME_SIZE + BUF_SIZE - 1);
+    str_len = read(sock, name_msg, BUF_SIZE);
     if (str_len == -1)
       return (void*) -1;
+      
+      //file download
+      if(strcmp(name_msg, "file : sr->cl") ==  0) {
+          //file from server
+          
+          FILE *fp;
+          printf("받을 파일은 %s\n", file_send_name);
+          
+          
+          if ( (fp = fopen(file_send_name, "wb")) == NULL) {
+              fprintf(stderr, "Error! Cannot open file...\n");
+              exit(1);
+          }
+          //sleep(4);
+          while(1)
+          {
+              read(sock, file_msg, BUF_SIZE);
+              printf("%s", file_msg);
+              if(!strcmp(file_msg, "FileEnd_sr->cl"))
+                  break;
+              fwrite(file_msg, 1, BUF_SIZE, fp);
+          }
+          
+          fclose(fp);
+          
+          printf("(!Notice)File receive finished \n");
+      }
+      
+      
+  
     name_msg[str_len] = 0;
     fputs(name_msg, stdout);
   }

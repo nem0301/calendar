@@ -11,15 +11,21 @@
 #define BUF_SIZE 257
 #define MAX_CLNT 256
 
+#define PORT 8797  //SJNAM DEFINE
+
 void * handle_clnt(void * arg);
 void send_msg(char * msg, int len, int clnt_sock);
 void error_handling(char * msg);
 void execution(int clnt_sock);
 
+//fileDownload
+void fileDownload(char * msg, int clnt_sock);
+
 int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
 pthread_mutex_t mutx;
 pthread_mutex_t mutx_for_arg;
+pthread_mutex_t mutx_for_fileToClient;
 
 char* args_g[10];
 
@@ -29,7 +35,7 @@ int main(int argc, char *argv[]) {
   int clnt_adr_sz;
   pthread_t t_id;
 
-  if (argc != 2) {
+   if (argc != 2  ) {
     printf("Usage : %s <port>\n", argv[0]);
     exit(1);
   }
@@ -37,6 +43,7 @@ int main(int argc, char *argv[]) {
   //initialize mutex
   pthread_mutex_init(&mutx, NULL);
   pthread_mutex_init(&mutx_for_arg, NULL);
+  pthread_mutex_init(&mutx_for_fileToClient, NULL);
 
   //open server socket, bind and listen
   serv_sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -45,6 +52,8 @@ int main(int argc, char *argv[]) {
   serv_adr.sin_family = AF_INET;
   serv_adr.sin_addr.s_addr = htonl(INADDR_ANY);
   serv_adr.sin_port = htons(atoi(argv[1]));
+
+//    serv_adr.sin_port = htons(PORT);
 
   if (bind(serv_sock, (struct sockaddr*) &serv_adr, sizeof(serv_adr)) == -1)
     error_handling("bind() error");
@@ -131,7 +140,15 @@ void* handle_clnt(void* arg) {
       }
 
       fclose(fp);
-    } else {
+    } else if(strcmp("/fileDown", token) == 0) {
+        printf("client want to download file and socket : %d\n", clnt_sock);
+        token = strtok_r(NULL, " ", &ptr);
+        sprintf(tempbuf, "%s", token);
+        
+        fileDownload(tempbuf, clnt_sock);
+    }
+    
+    else {
       send_msg(msg, str_len, clnt_sock);
     }
   }
@@ -223,3 +240,45 @@ void execution(int clnt_sock) {
   }
 }
 
+
+//file download sjnam
+void fileDownload(char * msg, int clnt_sock)
+{
+    printf("client require this file :  %s\n", msg);
+    char buf[100];
+    int fd = open(msg, O_RDONLY);
+    char fileBuf[BUF_SIZE] = {0, };
+    if (fd <0) {
+        printf("open error server");
+        //에러전송
+    }
+    
+    pthread_mutex_lock(&mutx_for_fileToClient);
+    
+    
+    if (fd <0) {
+        printf("open error server");
+    }
+        write(clnt_sock, "file : sr->cl", BUF_SIZE);
+
+        int num =0;
+        while( (num = (int)read(fd, fileBuf, BUF_SIZE)) > 0) {
+            printf("보낸 내용 %s\n", fileBuf);
+            if( write(clnt_sock, fileBuf, BUF_SIZE) != BUF_SIZE)
+                perror("Write");
+        }
+        
+        
+        if( write(clnt_sock, "FileEnd_sr->cl", BUF_SIZE) != BUF_SIZE)
+            perror("Write");
+        
+        printf("마지막\n");
+        close(fd);
+        
+        
+//    }
+    
+    pthread_mutex_unlock(&mutx_for_fileToClient);
+    
+    
+}
