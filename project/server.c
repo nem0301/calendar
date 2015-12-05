@@ -7,11 +7,14 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <SYS/stat.h>
 
 #define BUF_SIZE 257
+
+#define FILE_BUF_SIZE 1
 #define MAX_CLNT 256
 
-#define PORT 8797  //SJNAM DEFINE
+#define PORT 8791  //SJNAM DEFINE
 
 void * handle_clnt(void * arg);
 void send_msg(char * msg, int len, int clnt_sock);
@@ -20,6 +23,9 @@ void execution(int clnt_sock);
 
 //fileDownload
 void fileDownload(char * msg, int clnt_sock);
+
+//fileUpload
+void fileUpload(char * msg, int clnt_sock);
 
 int clnt_cnt = 0;
 int clnt_socks[MAX_CLNT];
@@ -88,6 +94,10 @@ void* handle_clnt(void* arg) {
   char buf[100];
   char tempbuf[100];
   char recvbuf[BUF_SIZE];
+    
+  char file_msg[BUF_SIZE] = {0,};  //file buffer
+  char fileSizeBuf[BUF_SIZE];
+
   FILE* fp;
 
   //waiting client message
@@ -146,7 +156,46 @@ void* handle_clnt(void* arg) {
         sprintf(tempbuf, "%s", token);
         
         fileDownload(tempbuf, clnt_sock);
+        
     }
+      //file download
+      if(strcmp(token, "/fileUpload") ==  0) {
+          pthread_mutex_lock(&mutx_for_fileToClient);
+
+          //file from client
+          printf("client want to upload file and socket : %d\n", clnt_sock);
+          token = strtok_r(NULL, " ", &ptr);
+          sprintf(tempbuf, "%s", token);
+          tempbuf[strlen(tempbuf) - 1] = '\0';
+          FILE *fp;
+          printf("보낸 파일은 %s\n", tempbuf);
+          
+          int read_byte =0;
+          
+          read(clnt_sock, fileSizeBuf, BUF_SIZE);
+          printf("보낸 파일 용량 %s", fileSizeBuf);
+          int maxSize = atoi(fileSizeBuf);
+          
+          if ( (fp = fopen(tempbuf, "wb")) == NULL) {
+              fprintf(stderr, "Error! Cannot open file...\n");
+              exit(1);
+          }
+          //sleep(4);
+          while(read_byte < maxSize)
+          {
+              read_byte += read(clnt_sock, file_msg, FILE_BUF_SIZE);
+              printf("%s", file_msg);
+              if(!strcmp(file_msg, "FileEnd_cl->sr"))
+                  break;
+              fwrite(file_msg, 1, FILE_BUF_SIZE, fp);
+          }
+          
+          fclose(fp);
+          
+          printf("(!Notice)File receive finished \n");
+          pthread_mutex_unlock(&mutx_for_fileToClient);
+
+      }
     
     else {
       send_msg(msg, str_len, clnt_sock);
@@ -244,6 +293,7 @@ void execution(int clnt_sock) {
 //file download sjnam
 void fileDownload(char * msg, int clnt_sock)
 {
+    char fileSizeBuf[BUF_SIZE];
     printf("client require this file :  %s\n", msg);
     char buf[100];
     int fd = open(msg, O_RDONLY);
@@ -255,16 +305,24 @@ void fileDownload(char * msg, int clnt_sock)
     
     pthread_mutex_lock(&mutx_for_fileToClient);
     
+
     
     if (fd <0) {
         printf("open error server");
     }
         write(clnt_sock, "file : sr->cl", BUF_SIZE);
+    struct stat st;
+    stat(msg, &st);
+    off_t size = st.st_size;
+    sprintf(fileSizeBuf, "%lld", size);
+    printf("filesizebuf %s", fileSizeBuf);
+    write(clnt_sock, fileSizeBuf, BUF_SIZE);
+
 
         int num =0;
-        while( (num = (int)read(fd, fileBuf, BUF_SIZE)) > 0) {
+        while( (num = (int)read(fd, fileBuf, FILE_BUF_SIZE)) > 0) {
             printf("보낸 내용 %s\n", fileBuf);
-            if( write(clnt_sock, fileBuf, BUF_SIZE) != BUF_SIZE)
+            if( write(clnt_sock, fileBuf, FILE_BUF_SIZE) != FILE_BUF_SIZE)
                 perror("Write");
         }
         
@@ -282,3 +340,4 @@ void fileDownload(char * msg, int clnt_sock)
     
     
 }
+
