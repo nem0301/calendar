@@ -156,6 +156,7 @@ void* handle_clnt(void* arg) {
         sprintf(tempbuf, "%s", token);
         
         fileDownload(tempbuf, clnt_sock);
+        tempbuf[0] = '\0';
         
     }
       //file download
@@ -185,12 +186,16 @@ void* handle_clnt(void* arg) {
           {
               read_byte += read(clnt_sock, file_msg, FILE_BUF_SIZE);
               printf("%s", file_msg);
-              if(!strcmp(file_msg, "FileEnd_cl->sr"))
-                  break;
+//              if(!strcmp(file_msg, "FileEnd_cl->sr"))
+//                  break;
               fwrite(file_msg, 1, FILE_BUF_SIZE, fp);
           }
           
           fclose(fp);
+          tempbuf[0] = '\0';
+          fileSizeBuf[0] = '\0';
+          file_msg[0]='\0';
+          
           
           printf("(!Notice)File receive finished \n");
           pthread_mutex_unlock(&mutx_for_fileToClient);
@@ -295,7 +300,7 @@ void fileDownload(char * msg, int clnt_sock)
 {
     char fileSizeBuf[BUF_SIZE];
     printf("client require this file :  %s\n", msg);
-    char buf[100];
+
     int fd = open(msg, O_RDONLY);
     char fileBuf[BUF_SIZE] = {0, };
     if (fd <0) {
@@ -327,11 +332,13 @@ void fileDownload(char * msg, int clnt_sock)
         }
         
         
-        if( write(clnt_sock, "FileEnd_sr->cl", BUF_SIZE) != BUF_SIZE)
-            perror("Write");
-        
+//        if( write(clnt_sock, "FileEnd_sr->cl", BUF_SIZE) != BUF_SIZE)
+//            perror("Write");
+    
         printf("마지막\n");
         close(fd);
+        fileSizeBuf[0] = '\0';
+        fileBuf[0] = '\0';
         
         
 //    }

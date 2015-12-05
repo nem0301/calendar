@@ -12,7 +12,7 @@
 #define FILE_BUF_SIZE 1
 #define NAME_SIZE 20
 
-#define PORT 8791 //SJNAM DEFINE
+#define PORT 8777 //SJNAM DEFINE
 
 void * send_msg(void * arg);
 void * recv_msg(void * arg);
@@ -116,7 +116,7 @@ void * send_msg(void * arg)   // send thread main
         }
         
         struct stat st;
-        stat("bbb.txt", &st);
+        stat(file_send_name, &st);
         off_t size = st.st_size;
         sprintf(fileSizeBuf, "%lld", size);
         printf("filesizebuf %s", fileSizeBuf);
@@ -131,11 +131,16 @@ void * send_msg(void * arg)   // send thread main
         }
         
         
-        if( write(sock, "FileEnd_cl->sr", BUF_SIZE) != BUF_SIZE)
-            perror("Write");
+//        if( write(sock, "FileEnd_cl->sr", BUF_SIZE) != BUF_SIZE)
+//            perror("Write");
         
         printf("마지막\n");
         close(fd);
+        
+        fileBuf[0] = '\0';
+        fileSizeBuf[0] = '\0';
+        token[0] = '\0';
+        
         continue;
     }
       
@@ -196,7 +201,7 @@ void * recv_msg(void * arg)   // read thread main
           while(read_byte<maxSize)
           {
               read_byte += read(sock, file_msg, FILE_BUF_SIZE);
-              printf("%s", file_msg);
+//              printf("%s", file_msg);
               if(!strcmp(file_msg, "FileEnd_sr->cl"))
                   break;
               fwrite(file_msg, 1, FILE_BUF_SIZE, fp);
@@ -208,6 +213,8 @@ void * recv_msg(void * arg)   // read thread main
           fileSizeBuf[0] = '\0';
           file_msg[0] = '\0';
           file_send_name[0] = '\0';
+          name_msg[0]='\0';
+          continue;
 
       }
       
