@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <SYS/stat.h>
+#include <sys/stat.h>
 
 
 #include <sys/types.h>
@@ -172,6 +172,7 @@ void* handle_clnt(void* arg) {
         
     }
       //file download
+
       else if(strcmp(token, "/fileUpload") ==  0) {
           logbuf[0]= '\0';
           fd = open("chat_log.txt", O_CREAT | O_RDWR | O_APPEND, 0644);
@@ -184,7 +185,7 @@ void* handle_clnt(void* arg) {
           
           write(fd, logbuf, strlen(logbuf));
 
-          
+
           pthread_mutex_lock(&mutx_for_fileToClient);
 
           //file from client
