@@ -41,8 +41,8 @@ int main(int argc, char *argv[]) {
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-//  serv_addr.sin_port = htons(atoi(argv[2]));
-    serv_addr.sin_port = htons(PORT);
+  serv_addr.sin_port = htons(atoi(argv[2]));
+//    serv_addr.sin_port = htons(PORT);
 
   if (connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) == -1)
     error_handling("connect() error");
@@ -144,15 +144,14 @@ void * send_msg(void * arg)   // send thread main
         continue;
     }
       
-    else if (strcmp(token, "/surprise\n") == 0) {
-//        char abc[1024] = {0,};
+      //emoticons
+      if(!strcmp(token, "/smile\n")||!strcmp(token, "/surprise\n")||!strcmp(token, "/awkward\n")||!strcmp(token, "/boring\n")||!strcmp(token, "/sad\n")){
+          msg[0]='\0';
+          strcpy(msg, emoticon(token));
+          printf("%s",msg);
+      }
+      
 
-        msg[0] = '\0';
-        strcpy(msg, emoticon("/surprise\n"));
-        printf("%s", msg);
-        
-
-    }
     //when input q or Q, then quit
     if (!strcmp(msg, "q\n") || !strcmp(msg, "Q\n")) {
       close(sock);
