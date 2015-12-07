@@ -12,7 +12,7 @@
 #define FILE_BUF_SIZE 1
 #define NAME_SIZE 20
 
-#define PORT 8777 //SJNAM DEFINE
+#define PORT 8791 //SJNAM DEFINE
 
 void * send_msg(void * arg);
 void * recv_msg(void * arg);
@@ -41,8 +41,8 @@ int main(int argc, char *argv[]) {
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-  serv_addr.sin_port = htons(atoi(argv[2]));
-//    serv_addr.sin_port = htons(PORT);
+//  serv_addr.sin_port = htons(atoi(argv[2]));
+    serv_addr.sin_port = htons(PORT);
 
   if (connect(sock, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) == -1)
     error_handling("connect() error");
@@ -125,7 +125,7 @@ void * send_msg(void * arg)   // send thread main
         
         int num =0;
         while( (num = (int)read(fd, fileBuf, FILE_BUF_SIZE)) > 0) {
-            printf("보낸 내용 %s\n", fileBuf);
+//            printf("보낸 내용 %s\n", fileBuf);
             if( write(sock, fileBuf, FILE_BUF_SIZE) != FILE_BUF_SIZE)
                 perror("Write");
         }
@@ -158,6 +158,20 @@ void * send_msg(void * arg)   // send thread main
       close(sock);
       exit(0);
     }
+      if(!strcmp(msg,"/help\n")||!strcmp(msg,"/h\n")||!strcmp(msg,"/H\n")){
+          printf("============================================Help menu======================================\n");
+          printf("===========================================================================================\n\n");
+          printf("option0. /h , /H or /help : help\n");
+          printf("option1. /q or /Q : quit chat room\n");
+          printf("option2. /emotion : emoticon\n");
+          printf("kind of emoticons : 1./smile=^.^ 2./surprise=O.O 3./awkward=-,.-;; 4./boring=~.~ 5./sad=T.T\n\n");
+          printf("option3. /fileUpload [filename]\n");
+          printf("option4. /fileDown [filename] -> condition : already uploaded in server\n");
+          printf("===========================================================================================\n");
+          printf("===========================================================================================\n");
+          continue;
+      }
+      
 
     //send name and massage
     sprintf(name_msg, "%s %s", name, msg);
@@ -233,28 +247,25 @@ void error_handling(char *msg) {
 
 
 //jiman
-
 char *emoticon(char *msg){
     char emo[5][20]={"^.^\n","O.O\n","-,.-;;\n","~.~\n","T.T\n"};
     static char emobuf[BUF_SIZE];
-    
+    emobuf[0]='\0';
     if(!strcmp(msg,"/smile\n")){
         strcpy(emobuf,emo[0]);
-        return emobuf;
     }
     else if(!strcmp(msg,"/surprise\n")){
         strcpy(emobuf,emo[1]);
     }
     else if(!strcmp(msg,"/awkward\n")){
-        strcpy(msg,emo[2]);
+        strcpy(emobuf,emo[2]);
     }
     else if(!strcmp(msg,"/boring\n")){
-        strcpy(msg,emo[3]);
+        strcpy(emobuf,emo[3]);
     }
     else if(!strcmp(msg,"/sad\n")){
-        strcpy(msg,emo[4]);
+        strcpy(emobuf,emo[4]);
     }
     
     return emobuf;
 }
-

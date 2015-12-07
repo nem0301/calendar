@@ -9,12 +9,16 @@
 #include <fcntl.h>
 #include <SYS/stat.h>
 
+
+#include <sys/types.h>
+#include <time.h>
+
 #define BUF_SIZE 257
 
 #define FILE_BUF_SIZE 1
 #define MAX_CLNT 256
 
-#define PORT 8791  //SJNAM DEFINE
+#define PORT 8791//SJNAM DEFINE
 
 void * handle_clnt(void * arg);
 void send_msg(char * msg, int len, int clnt_sock);
@@ -34,6 +38,9 @@ pthread_mutex_t mutx_for_arg;
 pthread_mutex_t mutx_for_fileToClient;
 
 char* args_g[10];
+int fd;
+
+char date[BUF_SIZE];
 
 int main(int argc, char *argv[]) {
   int serv_sock, clnt_sock;
@@ -57,9 +64,9 @@ int main(int argc, char *argv[]) {
   memset(&serv_adr, 0, sizeof(serv_adr));
   serv_adr.sin_family = AF_INET;
   serv_adr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serv_adr.sin_port = htons(atoi(argv[1]));
+//  serv_adr.sin_port = htons(atoi(argv[1]));
 
-//    serv_adr.sin_port = htons(PORT);
+    serv_adr.sin_port = htons(PORT);
 
   if (bind(serv_sock, (struct sockaddr*) &serv_adr, sizeof(serv_adr)) == -1)
     error_handling("bind() error");
@@ -99,9 +106,14 @@ void* handle_clnt(void* arg) {
   char fileSizeBuf[BUF_SIZE];
 
   FILE* fp;
-
+  char logbuf[BUF_SIZE];
   //waiting client message
   while ((str_len = read(clnt_sock, msg, sizeof(msg))) != 0) {
+      struct tm *tm;
+      time_t t;
+      time(&t);
+      tm = localtime(&t);
+
     strcpy(buf, msg);
     buf[str_len - 1] = '\0';
 
@@ -160,7 +172,19 @@ void* handle_clnt(void* arg) {
         
     }
       //file download
-      if(strcmp(token, "/fileUpload") ==  0) {
+      else if(strcmp(token, "/fileUpload") ==  0) {
+          logbuf[0]= '\0';
+          fd = open("chat_log.txt", O_CREAT | O_RDWR | O_APPEND, 0644);
+          
+          sprintf(date,"[입력시간 %d년 %d월 %d일 %d시%d분%d초]\t",tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,tm->tm_hour,tm->tm_min,tm->tm_sec);
+          
+          
+          msg[str_len-1]='\0';
+          sprintf(logbuf,"%s %s\n", date, msg);
+          
+          write(fd, logbuf, strlen(logbuf));
+
+          
           pthread_mutex_lock(&mutx_for_fileToClient);
 
           //file from client
@@ -185,7 +209,7 @@ void* handle_clnt(void* arg) {
           while(read_byte < maxSize)
           {
               read_byte += read(clnt_sock, file_msg, FILE_BUF_SIZE);
-              printf("%s", file_msg);
+//              printf("%s", file_msg);
 //              if(!strcmp(file_msg, "FileEnd_cl->sr"))
 //                  break;
               fwrite(file_msg, 1, FILE_BUF_SIZE, fp);
@@ -202,8 +226,22 @@ void* handle_clnt(void* arg) {
 
       }
     
-    else {
-      send_msg(msg, str_len, clnt_sock);
+      else {
+          
+          logbuf[0]='\0';
+          fd = open("chat_log.txt", O_CREAT | O_RDWR | O_APPEND, 0644);
+          sprintf(date,"[입력시간 %d년 %d월 %d일 %d시%d분%d초]\t",tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,tm->tm_hour,tm->tm_min,tm->tm_sec);
+          
+          send_msg(msg, str_len, clnt_sock);
+          
+          msg[str_len-1]='\0';
+          sprintf(logbuf,"%s %s\n", date, msg);
+          
+          write(fd, logbuf, strlen(logbuf));
+          close(fd);
+        
+        
+     // send_msg(msg, str_len, clnt_sock);
     }
   }
 
@@ -326,7 +364,7 @@ void fileDownload(char * msg, int clnt_sock)
 
         int num =0;
         while( (num = (int)read(fd, fileBuf, FILE_BUF_SIZE)) > 0) {
-            printf("보낸 내용 %s\n", fileBuf);
+          //  printf("보낸 내용 %s\n", fileBuf);
             if( write(clnt_sock, fileBuf, FILE_BUF_SIZE) != FILE_BUF_SIZE)
                 perror("Write");
         }
