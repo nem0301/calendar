@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <SYS/stat.h>
+#include <sys/stat.h>
 
 #define BUF_SIZE 257
 
@@ -160,7 +160,7 @@ void* handle_clnt(void* arg) {
         
     }
       //file download
-      if(strcmp(token, "/fileUpload") ==  0) {
+    else if(strcmp(token, "/fileUpload") ==  0) {
           pthread_mutex_lock(&mutx_for_fileToClient);
 
           //file from client
