@@ -153,7 +153,7 @@ void * send_msg(void * arg)   // send thread main
       
 
     //when input q or Q, then quit
-    if (!strcmp(msg, "q\n") || !strcmp(msg, "Q\n")) {
+    if (!strcmp(msg, "/q\n") || !strcmp(msg, "/Q\n")) {
       close(sock);
       exit(0);
     }
